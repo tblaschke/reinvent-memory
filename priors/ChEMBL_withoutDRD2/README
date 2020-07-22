@@ -1,0 +1,1 @@
+This prior was trained on a subset of the ChEMBL dataset. Every known HTR1A and DRD2 active and all DRD2 analogues with an ECFP4 similarity of 0.4 or bigger were removed. The SMILES were standardized using RDKIT

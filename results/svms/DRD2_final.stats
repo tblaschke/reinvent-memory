@@ -1,0 +1,18 @@
+Training set	Balanced Accuracy:	0.99042774049217
+Training set	Recall:	0.9983221476510067
+Training set	Precision:	0.630074126367808
+Training set	MCC:	0.7861054307141274
+Training set	F1:	0.7725600519368102
+Training set	ROC AUC:	0.998032168158091
+Test set	Balanced Accuracy:	0.9552366415410385
+Test set	Recall:	0.931323283082077
+Test set	Precision:	0.5714285714285714
+Test set	MCC:	0.7199779269393453
+Test set	F1:	0.70828025477707
+Test set	ROC AUC:	0.9836791457286433
+Validation set	Balanced Accuracy:	0.9335280201342282
+Validation set	Recall:	0.8859060402684564
+Validation set	Precision:	0.5834254143646409
+Validation set	MCC:	0.7091320595241116
+Validation set	F1:	0.703530979347102
+Validation set	ROC AUC:	0.9889661912751678

@@ -1,0 +1,7 @@
+__pycache__
+*.pyc
+package.json
+.vscode
+tags
+.idea
+.DS_Store
