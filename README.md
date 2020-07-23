@@ -1,6 +1,6 @@
 # Implementation of "Memory-assisted reinforcement learning for diverse molecular de novo design"
 
-This repository holds the code used to train, sample, transfer learn and reinforcement learn models described in [Memory-assisted reinforcement learning for diverse molecular de novo design](http://doi.org/10.26434/chemrxiv.12693152).
+This repository holds the code used to train, sample, transfer learn and reinforcement learn models described in [Memory-assisted reinforcement learning for diverse molecular de novo design](https://doi.org/10.26434/chemrxiv.12693152).
 This code is based on our [updated REINVENT code](https://github.com/tblaschke/reinvent) used in "Molecular De Novo Design through Deep Reinforcement
 Learning".
 
