@@ -17,12 +17,13 @@ from scaffold.ScaffoldMemory import ScaffoldMemory
 
 class ScaffoldFilter(ScaffoldMemory):
 
-    def __init__(self, nbmax=25, minscore=0.6, generic=False):
+    def __init__(self, nbmax=25, minscore=0.6, generic=False, outputmode="binary"):
         super(ScaffoldFilter, self).__init__()
         self.nbmax = nbmax  # number of smiles for one scaffold to score until the penalizer starts
         self.minscore = minscore  # only add smiles with a minimum score into the memory
         self.generic = generic  # store generic scaffolds or normal murcko scaffolds?
         self._scaffoldfunc = self.getGenericScaffold if generic else self.getScaffold
+        self._outputmode = outputmode
 
     @abc.abstractmethod
     def score(self, smiles, scores_dict: dict) -> np.array:
@@ -60,10 +61,32 @@ class ScaffoldFilter(ScaffoldMemory):
         df = pd.DataFrame(df)
         df.to_csv(file, index=False)
 
+    def _sigmoid(self, x, k=0.15):
+        # sigmoid function
+        # use k to adjust the slope
+        x = x*2 -1 
+        s = 1 / (1 + np.exp(-x / k)) 
+        return s
 
+    
+    def calculate_output(self, nb_in_bucket: int):
+        if nb_in_bucket == 0:
+            return 1
+        if nb_in_bucket > self.nbmax:
+            return 0    
+        if nb_in_bucket <= self.nbmax:
+            frac = nb_in_bucket/self.nbmax
+            if self._outputmode == "sigmoid":
+                return 1 - self._sigmoid(frac)
+            elif self._outputmode == "linear":
+                return 1 - frac
+            else:  #self._outputmode == "binary"
+                return 1
+
+            
 class ScaffoldMatcher(ScaffoldFilter):
-    def __init__(self, nbmax=25, minscore=0.6, generic=False):
-        super().__init__(nbmax=nbmax, minscore=minscore, generic=generic)
+    def __init__(self, nbmax=25, minscore=0.6, generic=False, outputmode="binary"):
+        super().__init__(nbmax=nbmax, minscore=minscore, generic=generic, outputmode=outputmode)
 
     def score(self, smiles, scores_dict: dict) -> np.array:
         scores = scores_dict.pop("total_score")
@@ -83,8 +106,7 @@ class ScaffoldMatcher(ScaffoldFilter):
                 for k in scores_dict:
                     save_score[k] = float(scores_dict[k][i])
                 self._update_memory([smile], [scaffold], [save_score])
-                if len(self[scaffold]) > self.nbmax:
-                    scores[i] = 0
+                scores[i] = scores[i] * self.calculate_output(len(self[scaffold]))
         return scores
 
     def savetojson(self, file):
@@ -98,22 +120,22 @@ class ScaffoldMatcher(ScaffoldFilter):
 class IdenticalMurckoScaffold(ScaffoldMatcher):
     """Penalizes compounds based on exact Murcko Scaffolds previously generated. 'minsimilarity' is ignored."""
 
-    def __init__(self, nbmax=25, minscore=0.6, minsimilarity=0.6):
-        super().__init__(nbmax=nbmax, minscore=minscore, generic=False)
+    def __init__(self, nbmax=25, minscore=0.6, minsimilarity=0.6, outputmode="binary"):
+        super().__init__(nbmax=nbmax, minscore=minscore, generic=False, outputmode=outputmode)
 
 
 class IdenticalTopologicalScaffold(ScaffoldMatcher):
     """Penalizes compounds based on exact Topological Scaffolds previously generated. 'minsimilarity' is ignored."""
 
-    def __init__(self, nbmax=25, minscore=0.6, minsimilarity=0.6):
-        super().__init__(nbmax=nbmax, minscore=minscore, generic=True)
+    def __init__(self, nbmax=25, minscore=0.6, minsimilarity=0.6, outputmode="binary"):
+        super().__init__(nbmax=nbmax, minscore=minscore, generic=True, outputmode=outputmode)
 
 
 class CompoundSimilarity(ScaffoldFilter):
     """Penalizes compounds based on the ECFP or FCFP Tanimoto similarity to previously generated compounds."""
 
-    def __init__(self, nbmax=25, minscore=0.6, minsimilarity=0.6, radius=2, useFeatures=False, bits=2048):
-        super().__init__(nbmax=nbmax, minscore=minscore, generic=False)
+    def __init__(self, nbmax=25, minscore=0.6, minsimilarity=0.6, radius=2, useFeatures=False, bits=2048, outputmode="binary"):
+        super().__init__(nbmax=nbmax, minscore=minscore, generic=False, outputmode=outputmode)
         self.minsimilarity = minsimilarity
         self.radius = radius
         self.useFeatures = useFeatures
@@ -137,8 +159,7 @@ class CompoundSimilarity(ScaffoldFilter):
                     self._update_memory([smile], [cluster], [save_score], [fingerprint])
                 else:
                     self._update_memory([smile], [cluster], [save_score])
-                if len(self[cluster]) > self.nbmax:
-                    scores[i] = 0
+                scores[i] = scores[i] * self.calculate_output(len(self[cluster]))
 
         return scores
 
@@ -168,8 +189,8 @@ class CompoundSimilarity(ScaffoldFilter):
 class ScaffoldSimilarity(CompoundSimilarity):
     """Penalizes compounds based on atompair Tanimoto similarity to previously generated Murcko Scaffolds."""
 
-    def __init__(self, nbmax=25, minscore=0.6, minsimilarity=0.6):
-        super().__init__(nbmax=nbmax, minscore=minscore, minsimilarity=minsimilarity)
+    def __init__(self, nbmax=25, minscore=0.6, minsimilarity=0.6, outputmode="binary"):
+        super().__init__(nbmax=nbmax, minscore=minscore, minsimilarity=minsimilarity, outputmode=outputmode)
 
     def score(self, smiles, scores_dict: dict) -> np.array:
         scores = scores_dict.pop("total_score")
@@ -189,15 +210,17 @@ class ScaffoldSimilarity(CompoundSimilarity):
                     self._update_memory([smile], [cluster], [save_score], [fingerprint])
                 else:
                     self._update_memory([smile], [cluster], [save_score])
-                if len(self[cluster]) > self.nbmax:
-                    scores[i] = 0
+                scores[i] = scores[i] * self.calculate_output(len(self[cluster]))
 
         return scores
 
     def findCluster(self, smiles):
         mol = Chem.MolFromSmiles(smiles)
         if mol:
-            scaffold = MurckoScaffold.GetScaffoldForMol(mol)
+            try:
+                scaffold = MurckoScaffold.GetScaffoldForMol(mol)
+            except:
+                return "", "", False
             if scaffold:
                 cluster = Chem.MolToSmiles(scaffold, isomericSmiles=False)
             else:
@@ -221,8 +244,8 @@ class ScaffoldSimilarity(CompoundSimilarity):
 
 
 class NoScaffoldFilter(ScaffoldFilter):
-    """Don't penalize compounds. Only save them with more than 'minscore'. 'minsimilarity' is ignored."""
-    def __init__(self, minscore=0.6, minsimilarity=0.6):
+    """Don't penalize compounds. Only save them with more than 'minscore'. All other arguments are ignored."""
+    def __init__(self, minscore=0.6, minsimilarity=0.6, nbmax=25, outputmode="binary"):
         super().__init__(minscore=minscore)
 
     def score(self, smiles, scores_dict: dict) -> np.array:
