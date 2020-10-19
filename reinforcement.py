@@ -69,19 +69,13 @@ def reinforcement_learning(prior: models.reinvent.Model, agent: models.reinvent.
 
         # Experience Replay
         # First sample
-        if experience_replay and len(experience) > 4:
+        if experience_replay and len(experience) > 8:
             exp_seqs, exp_score, exp_prior_likelihood = experience.sample(8)
             exp_agent_likelihood, exp_entropy = agent.likelihood(exp_seqs.long(), temperature=temperature)
             exp_augmented_likelihood = exp_prior_likelihood + sigma * exp_score
             exp_loss = torch.pow((Variable(exp_augmented_likelihood) - exp_agent_likelihood), 2)
             loss = torch.cat((loss, exp_loss), 0)
             agent_likelihood = torch.cat((agent_likelihood, exp_agent_likelihood), 0)
-
-        # Then add new experience
-        prior_likelihood = prior_likelihood.data.cpu().numpy()
-        new_experience = zip(smiles, score, prior_likelihood)
-        if experience_replay:
-            experience.add_experience(new_experience)
 
         # Calculate loss
         loss = loss.mean()
@@ -105,6 +99,12 @@ def reinforcement_learning(prior: models.reinvent.Model, agent: models.reinvent.
         # Convert to numpy arrays so that we can print them
         augmented_likelihood = augmented_likelihood.data.cpu().numpy()
         agent_likelihood = agent_likelihood.data.cpu().numpy()
+        prior_likelihood = prior_likelihood.data.cpu().numpy()
+
+        # Add new experience 
+        if experience_replay:
+            new_experience = zip(smiles, score, prior_likelihood)
+            experience.add_experience(new_experience)
 
         # Print some information for this step
         time_elapsed = int(time.time() - start_time)
@@ -127,7 +127,7 @@ def reinforcement_learning(prior: models.reinvent.Model, agent: models.reinvent.
         if step % save_every == 0:
             logging.info("Write scaffold memory")
             if scaffoldfilter:
-                #scaffoldfilter.savetojson(os.path.join(logdir, "scaffold_memory.{}.json".format(step)))
+                scaffoldfilter.savetojson(os.path.join(logdir, "scaffold_memory.{}.json".format(step)))
                 scaffoldfilter.savetocsv(os.path.join(logdir, "scaffold_memory.{}.csv".format(step)))
             logging.debug("Write Agent memory")
             agent.save(os.path.join(logdir, 'Agent.{}.ckpt'.format(step)))
@@ -165,7 +165,7 @@ def reinforcement_learning(prior: models.reinvent.Model, agent: models.reinvent.
         experience.print_memory(os.path.join(resultdir, "experience_memory"))
 
     if scaffoldfilter:
-        #scaffoldfilter.savetojson(os.path.join(resultdir, "scaffold_memory.json"))
+        scaffoldfilter.savetojson(os.path.join(resultdir, "scaffold_memory.json"))
         scaffoldfilter.savetocsv(os.path.join(resultdir, "scaffold_memory.csv"))
 
     # copy the output.log as well

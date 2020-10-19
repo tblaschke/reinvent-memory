@@ -9,7 +9,7 @@ from utils import Variable
 
 
 class Experience(object):
-    """Class for prioritized experinence replay that remembers the highest scored sequences
+    """Class for prioritized experience replay that remembers the highest scored sequences
        seen and samples from them with probabilities relative to their scores"""
 
     def __init__(self, voc, max_size=100):
@@ -38,7 +38,7 @@ class Experience(object):
         if len(self.memory) < n:
             raise IndexError('Size of memory ({}) is less than requested sample ({})'.format(len(self), n))
         else:
-            scores = [x[1] for x in self.memory]
+            scores = [x[1]+np.finfo(float).eps for x in self.memory]
             sample = np.random.choice(len(self), size=n, replace=False, p=scores / np.sum(scores))
             sample = [self.memory[i] for i in sample]
             smiles = [x[0] for x in sample]

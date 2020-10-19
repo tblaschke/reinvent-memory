@@ -2,6 +2,7 @@
 
 import argparse
 import contextlib
+import distutils.util
 import json
 import logging
 import os
@@ -88,7 +89,7 @@ def main():
     optionalArgs.add_argument("--debug", "-v", help='Verbose messages', action='store_true', default=False)
     optionalArgs.add_argument("--noteset", "-vv", help='More verbose messages', action='store_true', default=False)
 
-    optionalArgs.add_argument("--experience", help='Enable experience replay. Default False', type=bool,
+    optionalArgs.add_argument("--experience", help='Enable experience replay. Default False', type=lambda input: bool(distutils.util.strtobool(input)),
                               default=False, metavar="<bool>")
     optionalArgs.add_argument("--lr", help='Optimizer learning rate. Default: 0.0001', type=float, default=0.0001,
                               metavar="<float>")
